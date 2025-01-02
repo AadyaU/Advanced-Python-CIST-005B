@@ -1,0 +1,246 @@
+# -*- coding: utf-8 -*-
+import heapq
+
+# Doubly Linked List Node for Activity tracking
+class Node:
+    def __init__(self, action, data):
+        self.action = action  # "add", "remove", or "edit"
+        self.data = data  # Class location or relevant information
+        self.prev = None
+        self.next = None
+
+# Activity class implementing a doubly linked list
+class Activity:
+    def __init__(self):
+        self.head = None
+        self.tail = None
+        self.current = None
+
+    # Push a new action to the list
+    def push(self, action, data):
+        new_node = Node(action, data)
+        if not self.head:  # If list is empty
+            self.head = self.tail = new_node
+        else:
+            new_node.prev = self.tail
+            self.tail.next = new_node
+            self.tail = new_node
+        self.current = new_node
+        print(f"Action recorded: {action} - {data}")
+
+    # Undo the last action
+    def undo(self, schedule):
+        if self.current:
+            print(f"Undoing: {self.current.action} {self.current.data}")
+            if self.current.action == "add":
+                schedule.pop(self.current.data, None)
+            self.current = self.current.prev
+            if self.current and self.current.next:
+                self.current.next.prev = None
+            if self.current:
+                self.current.next = None
+            return True
+        else:
+            print("No actions to undo.")
+            return False
+
+# Graph implementation
+class Graph:
+    def __init__(self):
+        self.adjacency_list = {}
+
+    def add_vertex(self, vertex):
+        if vertex not in self.adjacency_list:
+            self.adjacency_list[vertex] = []
+
+    def add_edge(self, from_vertex, to_vertex, weight):
+        if from_vertex in self.adjacency_list and to_vertex in self.adjacency_list:
+            self.adjacency_list[from_vertex].append((to_vertex, weight))
+            self.adjacency_list[to_vertex].append((from_vertex, weight))
+
+# Dijkstra's algorithm
+def dijkstra(graph, start, end):
+    pq = [(0, start)]
+    distances = {start: 0}
+    previous_vertices = {start: None}
+
+    while pq:
+        current_distance, current_vertex = heapq.heappop(pq)
+        if current_vertex == end:
+            break
+        if current_distance > distances.get(current_vertex, float('inf')):
+            continue
+        for neighbor, weight in graph.adjacency_list.get(current_vertex, []):
+            distance = current_distance + weight
+            if distance < distances.get(neighbor, float('inf')):
+                distances[neighbor] = distance
+                previous_vertices[neighbor] = current_vertex
+                heapq.heappush(pq, (distance, neighbor))
+
+    path = []
+    current_vertex = end
+    while current_vertex is not None:
+        path.append(current_vertex)
+        current_vertex = previous_vertices[current_vertex]
+    path.reverse()
+    return distances.get(end, float('inf')), path
+
+# Get schedule from user
+def get_student_schedule(graph, activities, action_tracker):
+    schedule = {}
+    print("\nEnter your schedule (up to 6 locations, starting from Gates):")
+    print("Available locations (excluding Gates, Restroom, and Wellness Center):")
+
+    excluded_locations = {"Gates", "Restroom", "Wellness Center"}
+    for location, description in activities.items():
+        if location not in excluded_locations:
+            print(f"- {location}: {description}")
+
+    for i in range(1, 7):  # Loop for 6 periods
+        while True:
+            location = input(f"Enter location for period {i}: ").strip()
+            if location in graph.adjacency_list and location != "Gates" and location != "Restroom" and location != "Wellness Center":
+                action_tracker.push("add", location)
+                schedule[location] = i
+                print(f"Added: {location} for period {i}")
+
+                # Ask if the user wants to undo or redo
+                while True:
+                    undo_choice = input("Would you like to undo this action? (yes/no): ").strip().lower()
+                    if undo_choice == "yes":
+                        action_tracker.undo(schedule)
+                        print(f"Action undone. Re-enter the location for period {i}.")
+                        break
+                    elif undo_choice == "no":
+                        break
+                    else:
+                        print("Invalid input. Please type 'yes' or 'no'.")
+                if undo_choice != "yes":
+                    break
+            else:
+                print("Invalid location. Please try again.")
+    return schedule
+
+# Continuously ask if user needs to visit Wellness Center or Restroom
+def visit_wellness_or_restroom(graph):
+    while True:
+        additional_stop = input("\nDo you need to go to the Wellness Center or Restroom? (type 'Wellness Center', 'Restroom', or 'no'): ").strip()
+        if additional_stop == "no":
+            print("No worries!")
+            break
+        elif additional_stop in ["Wellness Center", "Restroom"]:
+            while True:
+                current_location = input("Where are you currently located? ").strip()
+                if current_location in graph.adjacency_list:
+                    break
+                print("Invalid location. Please try again.")
+
+            distance, path = dijkstra(graph, current_location, additional_stop)
+            print(f"\nShortest path from {current_location} to {additional_stop}: {' -> '.join(path)}")
+            print(f"Distance: {distance} units")
+        else:
+            print("Invalid input. Please type 'Wellness Center', 'Restroom', or 'no'.")
+
+def club(graph):
+    while True:
+        club_type = input("\nDo you want to go to any clubs? (type 'Art Club', 'Coding Club', 'Science Club', or 'no'): ").strip()
+        if club_type == "no":
+            print("Thank you for using Campus Connect!")
+            break
+        elif club_type in ["Art Club", "Coding Club", "Science Club"]:
+            if club_type == "Art Club":
+              additional_stop = "Art Room"
+            elif club_type == "Coding Club":
+              additional_stop = "Computer Lab"
+            elif club_type == "Science Club":
+              additional_stop = "Science Lab"
+            while True:
+                current_location = input("Where are you currently located? ").strip()
+                if current_location in graph.adjacency_list:
+                    break
+                print("Invalid location. Please try again.")
+
+            distance, path = dijkstra(graph, current_location, additional_stop)
+            print(f"\nShortest path from {current_location} to {additional_stop}: {' -> '.join(path)}")
+            print(f"Distance: {distance} units")
+        else:
+            print("Invalid input. Please type 'Art Club', 'Coding Club', 'Science Club', or 'no'")
+
+# Find shortest path for entire schedule
+# Used GPT 4 to debug
+def find_shortest_paths(graph, activities, action_tracker):
+    student_schedule = get_student_schedule(graph, activities, action_tracker)
+    ordered_locations = sorted(student_schedule.items(), key=lambda x: x[1])
+    locations_in_order = ["Gates"] + [loc for loc, _ in ordered_locations] + ["Gates"]
+    print("\nCalculating shortest paths...")
+    total_distance = 0
+    for i in range(len(locations_in_order) - 1):
+        start = locations_in_order[i]
+        end = locations_in_order[i + 1]
+        distance, path = dijkstra(graph, start, end)
+        total_distance += distance
+        print(f"Shortest path from {start} to {end}: {' -> '.join(path)}")
+        print(f"Distance: {distance} units\n")
+    print(f"Total distance traveled: {total_distance} units")
+
+# Main setup
+def main():
+    # Graph initialization
+    # Used GPT 4 to get location suggestions
+    graph = Graph()
+    locations = [
+        "Gates", "Gymnasium", "Math Classrooms", "Art Room", "Computer Lab",
+        "Science Lab", "Cafeteria", "History Buildings", "English Buildings",
+        "Wellness Center", "Restroom"
+    ]
+    for loc in locations:
+        graph.add_vertex(loc)
+
+    # Define edges
+    # Used GPT 4 to get location distance suggestions
+    edges = [
+        ("Gates", "Gymnasium", 5), ("Gates", "Cafeteria", 7),
+        ("Gates", "Math Classrooms", 4), ("Gymnasium", "Cafeteria", 6),
+        ("Math Classrooms", "Science Lab", 5), ("Math Classrooms", "Computer Lab", 3),
+        ("Art Room", "Computer Lab", 4), ("Art Room", "English Buildings", 7),
+        ("Science Lab", "History Buildings", 6), ("Computer Lab", "Science Lab", 3),
+        ("Cafeteria", "History Buildings", 8), ("History Buildings", "English Buildings", 4),
+        ("Wellness Center", "Gates", 2), ("Wellness Center", "Cafeteria", 3),
+        ("Restroom", "Gates", 1), ("Restroom", "Gymnasium", 2),
+        ("Restroom", "Science Lab", 3)
+    ]
+    for from_vertex, to_vertex, weight in edges:
+        graph.add_edge(from_vertex, to_vertex, weight)
+
+    graph.add_edge("Math Classrooms", "English Buildings", 8)
+
+    # Define activities (hash table)
+    # Used GPT 4 to get location suggestions and descriptions
+    activities = {
+        "Gates": "Main entrance to the campus.",
+        "Gymnasium": "For physical activities and sports.",
+        "Math Classrooms": "Location of math-related classes.",
+        "Art Room": "Where art classes are held.",
+        "Computer Lab": "Equipped for computer and coding classes.",
+        "Science Lab": "Conduct science experiments here.",
+        "Cafeteria": "Grab your lunch here.",
+        "History Buildings": "History-related classrooms.",
+        "English Buildings": "English and literature classrooms.",
+        "Wellness Center": "For health and wellness support.",
+        "Restroom": "Facilities for personal hygiene."
+    }
+
+    # Initialize action tracker
+    action_tracker = Activity()
+
+    # Find paths for the student's schedule
+    find_shortest_paths(graph, activities, action_tracker)
+
+    # Ask if the user needs to visit the Wellness Center or Restroom
+    visit_wellness_or_restroom(graph)
+
+    # Ask if the user wants to go to a club
+    club(graph)
+
+if __name__ == "__main__":
+    main()
