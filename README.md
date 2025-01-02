@@ -1,4 +1,4 @@
-# python-learning-journal
+# Advanced-Python-CIST-005B
 A repository to document my Python learning journey
 
 About Me:
