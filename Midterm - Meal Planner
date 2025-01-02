@@ -1,0 +1,461 @@
+# Base class for recipes
+class Recipe:
+    def __init__(self, name, ingredients, instructions, cooking_time, servings, materials, category):
+        self.name = name
+        self.ingredients = ingredients
+        self.instructions = instructions
+        self.cooking_time = cooking_time
+        self.servings = servings
+        self.materials = materials
+        self.category = category
+
+    def serving_suggestion(self):
+        return "No specific serving suggestion."
+
+    def display_recipe(self):
+        print(f"Recipe: {self.name}")
+        print(f"Category: {self.category.capitalize()}")
+        print(f"Ingredients: {', '.join(self.ingredients)}")
+        print(f"Instructions: {self.instructions}")
+        print(f"Cooking Time: {self.cooking_time} minutes")
+        print(f"Servings: {self.servings}")
+        print("Materials and Appliances Needed:")
+        for item, quantity in self.materials.items():
+            print(f"  - {item}: {quantity}")
+
+
+# Inheritance for specific types of recipes
+class BreakfastRecipe(Recipe):
+    def serving_suggestion(self):
+        return "Serve with a side of fruit."
+
+
+class LunchRecipe(Recipe):
+    def serving_suggestion(self):
+        return "Pair with a refreshing drink."
+
+
+class DinnerRecipe(Recipe):
+    def serving_suggestion(self):
+        return "Best enjoyed with a glass of sparkling water."
+
+
+class DessertRecipe(Recipe):
+    def serving_suggestion(self):
+        return "Serve with a scoop of ice cream."
+
+
+# Meal Plan class to manage recipes
+class MealPlan:
+    def __init__(self):
+        self.recipes = []
+        self.stack = LinkedListStack()  # Stack for recently viewed recipes
+        self.queue = LinkedListQueue()  # Queue for ingredient preparation
+
+    def add_recipe(self, recipe):
+        self.recipes.append(recipe)
+
+    def generate_shopping_list(self):
+        shopping_list = set()  # Using a set to avoid duplicates
+        for recipe in self.recipes:
+            shopping_list.update(recipe.ingredients)
+        return list(shopping_list)
+
+    def prepare_ingredients(self):
+        while not self.queue.is_empty():
+            current_recipe = self.queue.dequeue()  # Get the first recipe from the queue
+            print(f"Preparing ingredients for: {current_recipe.name}")
+            for ingredient in current_recipe.ingredients:
+                print(f"- Preparing: {ingredient}")
+
+    def add_to_queue(self, recipe):
+        self.queue.enqueue(recipe)
+
+    def view_recipe(self, recipe):
+        self.stack.push(recipe)
+
+    def search_recipe_by_name(self, name):
+        for recipe in self.recipes:
+            if recipe.name.lower() == name.lower():
+                return recipe
+        return "Recipe does not exist"
+
+    def generate_combinations(self):
+        print("Combinations of recipes (Meal Itinerary):")
+        generate_combinations(self.recipes)
+
+    def sort_recipes_by_time(self):
+        return sorted(self.recipes, key=lambda r: r.cooking_time)
+
+    def view_specific_meal_recipes(self, meal_type):
+        filtered_recipes = []
+        for recipe in self.recipes:
+          if recipe.category.lower() == meal_type.lower():
+            filtered_recipes.append(recipe)
+        if not filtered_recipes:
+            print(f"No recipes found for {meal_type.capitalize()}.")
+        else:
+            print(f"\nRecipes for {meal_type.capitalize()}:")
+            for recipe in filtered_recipes:
+                recipe.display_recipe()
+                print()
+
+
+# Stack implementation
+class Node:
+    def __init__(self, data):
+        self.data = data
+        self.next = None
+
+class LinkedListStack:
+    def __init__(self):
+        self.top = None
+
+    def is_empty(self):
+        return self.top is None
+
+    def push(self, item):
+        new_node = Node(item)
+        new_node.next = self.top
+        self.top = new_node
+
+    def pop(self):
+        if self.is_empty():
+            return None
+        popped_item = self.top.data
+        self.top = self.top.next
+        return popped_item
+
+    def peek(self):
+        return self.top.data if self.top else None
+
+
+# Queue implementation
+class LinkedListQueue:
+    def __init__(self):
+        self.front = None
+        self.rear = None
+
+    def is_empty(self):
+        return self.front is None
+
+    def enqueue(self, item):
+        new_node = Node(item)
+        if self.rear:
+            self.rear.next = new_node
+        else:
+            self.front = new_node
+        self.rear = new_node
+
+    def dequeue(self):
+        if self.is_empty():
+            return None
+        dequeued_item = self.front.data
+        self.front = self.front.next
+        if self.front is None:
+            self.rear = None
+        return dequeued_item
+
+
+# Recursion for generating combinations of recipes
+def generate_combinations(recipes, current_combination=[], category_counts=None):
+    #GPT 4o suggested this method to keep track of category counts and then I implemented it
+    if category_counts is None:
+        category_counts = {
+            "breakfast": 0,
+            "lunch": 0,
+            "dinner": 0,
+            "dessert": 0
+        }
+
+    # Check if we have one from each category
+    if (category_counts["breakfast"] == 1 and
+        category_counts["lunch"] == 1 and
+        category_counts["dinner"] == 1 and
+        category_counts["dessert"] == 1):
+        print("Combination:", [recipe.name for recipe in current_combination])
+        return  # Found a valid combination, no need to continue
+
+    # Generate combinations
+    for i in range(len(recipes)):
+        recipe = recipes[i]
+
+        # Skip if the recipe is already in the current combination
+        if recipe in current_combination:
+            continue
+
+        # Add the recipe based on its category
+        if recipe.category == "breakfast" and category_counts["breakfast"] == 0:
+            current_combination.append(recipe)
+            category_counts["breakfast"] += 1
+            generate_combinations(recipes, current_combination, category_counts) # Recursive here, as it calls function again with the updated combination to continue on
+            current_combination.pop()
+            category_counts["breakfast"] -= 1 # Allowing iterator to reset
+
+        elif recipe.category == "lunch" and category_counts["lunch"] == 0 and category_counts["breakfast"] == 1:
+            current_combination.append(recipe)
+            category_counts["lunch"] += 1
+            generate_combinations(recipes, current_combination, category_counts)
+            current_combination.pop()
+            category_counts["lunch"] -= 1
+
+        elif recipe.category == "dinner" and category_counts["dinner"] == 0 and category_counts["lunch"] == 1:
+            current_combination.append(recipe)
+            category_counts["dinner"] += 1
+            generate_combinations(recipes, current_combination, category_counts)
+            current_combination.pop()
+            category_counts["dinner"] -= 1
+
+        elif recipe.category == "dessert" and category_counts["dessert"] == 0 and category_counts["dinner"] == 1:
+            current_combination.append(recipe)
+            category_counts["dessert"] += 1
+            generate_combinations(recipes, current_combination, category_counts)
+            current_combination.pop()
+            category_counts["dessert"] -= 1
+
+
+# Searching for a recipe by name
+def search_recipe_by_name(recipes, name):
+    for recipe in recipes:
+        if recipe.name.lower() == name.lower():
+            return recipe
+    return None
+
+def sort_recipes_by_time(recipes):
+    if len(recipes) <= 1:
+        return recipes
+
+    mid = len(recipes) // 2
+    left_half = sort_recipes_by_time(recipes[:mid])
+    right_half = sort_recipes_by_time(recipes[mid:])
+
+    return merge(left_half, right_half)
+
+def merge(left, right):
+    sorted_list = []
+    while left and right:
+        if left[0].cooking_time <= right[0].cooking_time:
+            sorted_list.append(left.pop(0))
+        else:
+            sorted_list.append(right.pop(0))
+
+    sorted_list.extend(left)
+    sorted_list.extend(right)
+
+    return sorted_list
+
+
+def main():
+    weekly_plan = MealPlan()
+
+    # Sample recipes with materials and appliances
+    #GPT 4o gave these sample recipes and I added them in
+    pancakes = BreakfastRecipe(
+        name="Pancakes",
+        ingredients=["flour", "milk", "eggs", "sugar", "baking powder"],
+        instructions="Mix ingredients and cook on a skillet.",
+        cooking_time=15,
+        servings=4,
+        materials={"bowl": 1, "whisk": 1, "skillet": 1, "spoon": 1},
+        category="breakfast"
+    )
+
+    salad = LunchRecipe(
+        name="Caesar Salad",
+        ingredients=["romaine lettuce", "croutons", "Caesar dressing", "parmesan cheese"],
+        instructions="Toss all ingredients together.",
+        cooking_time=10,
+        servings=2,
+        materials={"bowl": 1, "spoon": 1},
+        category="lunch"
+    )
+
+    spaghetti = DinnerRecipe(
+        name="Spaghetti Bolognese",
+        ingredients=["spaghetti", "ground beef", "tomato sauce", "onion", "garlic"],
+        instructions="Cook spaghetti and prepare the sauce.",
+        cooking_time=30,
+        servings=4,
+        materials={"pot": 1, "pan": 1, "stove": 1, "spoon": 1},
+        category="dinner"
+    )
+
+    omelette = BreakfastRecipe(
+        name="Omelette",
+        ingredients=["eggs", "cheese", "bell peppers", "onions", "salt"],
+        instructions="Whisk eggs, pour into a hot pan, and add fillings. Cook until set.",
+        cooking_time=10,
+        servings=2,
+        materials={"bowl": 1, "pan": 1, "spatula": 1},
+        category="breakfast"
+    )
+
+    turkey_sandwich = LunchRecipe(
+        name="Turkey Sandwich",
+        ingredients=["turkey", "cheese", "lettuce", "tomato", "bread"],
+        instructions="Layer ingredients between slices of bread.",
+        cooking_time=5,
+        servings=1,
+        materials={"knife": 1, "plate": 1},
+        category="lunch"
+    )
+
+    grilled_chicken = DinnerRecipe(
+        name="Grilled Chicken",
+        ingredients=["chicken breasts", "olive oil", "salt", "pepper"],
+        instructions="Marinate chicken and grill until cooked.",
+        cooking_time=25,
+        servings=4,
+        materials={"grill": 1, "tongs": 1},
+        category="dinner"
+    )
+
+    ice_cream = DessertRecipe(
+        name="Chocolate Ice Cream",
+        ingredients=["cream", "milk", "sugar", "cocoa powder"],
+        instructions="Mix ingredients and churn in an ice cream maker.",
+        cooking_time=30,
+        servings=6,
+        materials={"ice cream maker": 1, "bowl": 1},
+        category="dessert"
+    )
+
+    # Adding recipes to the meal plan
+    weekly_plan.add_recipe(pancakes)
+    weekly_plan.add_recipe(salad)
+    weekly_plan.add_recipe(spaghetti)
+    weekly_plan.add_recipe(omelette)
+    weekly_plan.add_recipe(turkey_sandwich)
+    weekly_plan.add_recipe(grilled_chicken)
+    weekly_plan.add_recipe(ice_cream)
+
+    # Menu interaction
+    while True:
+        print("\n--- Meal Planner Menu ---")
+        print("1. View All Recipes")
+        print("2. Recipes I Want To Make This Week!")
+        print("3. What Ingredients Do I Need To Make Those Recipes This Week?")
+        print("4. Search For A Recipe")
+        print("5. Generate Daily Meal Itinerary (example)")
+        print("6. Sort Recipes By Cooking Time")
+        print("7. Add A New Recipe!")
+        print("8. View A Specific Meal's Recipe Options")
+        print("9. View Last Viewed Recipe")
+        print("10. Exit")
+        choice = input("Choose an option (1-10): ")
+
+        if choice == '1':
+            print("\nRecipes:")
+            for recipe in weekly_plan.recipes:
+                recipe.display_recipe()
+                print(recipe.serving_suggestion())
+                print()  # Print a new line for better readability
+
+        elif choice == '2':
+            recipe_name = input("Enter the name of the recipe to add to the recipes you will make this week: ")
+            recipe = search_recipe_by_name(weekly_plan.recipes, recipe_name)
+            if recipe:
+                weekly_plan.add_to_queue(recipe)
+                print(f"Added {recipe.name} to list of recipes you will make this week.")
+                weekly_plan.view_recipe(recipe)
+            else:
+                print("Recipe not found.")
+
+        elif choice == '3':
+            weekly_plan.prepare_ingredients()
+
+        elif choice == '4':
+            recipe_name = input("Enter the name of the recipe you want to search for: ")
+            recipe = search_recipe_by_name(weekly_plan.recipes, recipe_name)
+            if recipe:
+                recipe.display_recipe()
+
+            else:
+                print("Recipe not found.")
+
+        elif choice == '5':
+            weekly_plan.generate_combinations()
+
+        elif choice == '6':
+            sorted_recipes = weekly_plan.sort_recipes_by_time()
+            print("\nSorted Recipes by Cooking Time:")
+            for recipe in sorted_recipes:
+                print(f"{recipe.name}: {recipe.cooking_time} minutes")
+
+        elif choice == '7':
+            name = input("Enter the name of the new recipe: ")
+            ingredients = input("Enter the ingredients (comma-separated): ").split(",")
+            instructions = input("Enter the cooking instructions: ")
+            cooking_time = input("Enter the cooking time (in minutes): ")
+            try:
+              cooking_time = int(cooking_time)
+            except ValueError:
+              print("Not a valid cooking time. Please retry your recipe.")
+              continue
+            servings = input("Enter the number of servings: ")
+            try:
+              servings = int(servings)
+            except ValueError:
+              print("Not a valid serving size. Please retry your recipe.")
+              continue
+
+            category = input("Enter the category (breakfast/lunch/dinner/dessert): ")
+            valid_categories = ["breakfast", "lunch", "dinner", "dessert"]
+            if category.lower() not in valid_categories:
+              print("Not a valid category. Please retry your recipe.")
+              continue
+            else:
+              print("")
+
+            materials = {}
+            while True:
+                material = input("Enter the material needed (or type 'done' to finish): ")
+                if material.lower() == "done":  # Check if the user wants to finish
+                  break
+                try:
+                  quantity = int(input(f"Enter the quantity for {material}: "))
+                except:
+                  print("Invalid input. Please retype the material and make sure the quantity is an integer.")
+                  continue
+
+                materials[material.strip()] = int(quantity)
+
+            # Determine category class based on user input
+            if category.lower() == "breakfast":
+                new_recipe = BreakfastRecipe(name, ingredients, instructions, cooking_time, servings, materials, category)
+            elif category.lower() == "lunch":
+                new_recipe = LunchRecipe(name, ingredients, instructions, cooking_time, servings, materials, category)
+            elif category.lower() == "dinner":
+                new_recipe = DinnerRecipe(name, ingredients, instructions, cooking_time, servings, materials, category)
+            elif category.lower() == "dessert":
+                new_recipe = DessertRecipe(name, ingredients, instructions, cooking_time, servings, materials, category)
+            else:
+                print("Invalid category. Please try again.")
+                continue
+
+            weekly_plan.add_recipe(new_recipe)
+            print(f"Recipe '{name}' added successfully!")
+
+        elif choice == '8':
+            meal_type = input("Enter the meal type (breakfast/lunch/dinner/dessert) to view recipes: ")
+            weekly_plan.view_specific_meal_recipes(meal_type)
+
+        elif choice == '9':
+            last_viewed_recipe = weekly_plan.stack.pop()
+            if last_viewed_recipe:
+                print("\nLast Viewed Recipe:")
+                last_viewed_recipe.display_recipe()
+                print(last_viewed_recipe.serving_suggestion())
+            else:
+                print("No recipes have been viewed yet.")
+
+        elif choice == '10':
+            print("Exiting the Meal Planner.")
+            break
+
+        else:
+            print("Invalid choice, please try again.")
+
+# Run the main function
+if __name__ == "__main__":
+    main()
